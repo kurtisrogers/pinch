@@ -520,3 +520,220 @@ a:hover {
 .footer p {
   margin: 0;
 }
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.mode-tab {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-tab.active {
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Spider options */
+.spider-options {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.options-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.options-grid input[type="number"] {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  padding-top: 1.25rem;
+}
+
+/* Spider results */
+.report-actions {
+  margin-bottom: 1.5rem;
+}
+
+.pdf-btn {
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid rgba(61, 214, 140, 0.4);
+  border-radius: 8px;
+  background: rgba(61, 214, 140, 0.12);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pdf-btn:hover {
+  background: rgba(61, 214, 140, 0.2);
+}
+
+.spider-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card .stat-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.bad-stat {
+  color: var(--bad) !important;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.link-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.link-table th,
+.link-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.link-table th {
+  background: var(--bg-card);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.link-table tr:last-child td {
+  border-bottom: none;
+}
+
+.link-table .mono {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.status-dead {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.zone-pill {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.zone-content { color: var(--accent); }
+.zone-navigation { color: var(--warn); }
+.zone-footer { color: var(--text-muted); }
+
+.all-clear {
+  color: var(--good);
+  font-weight: 500;
+}
+
+.crawl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.crawl-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.crawl-depth {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+.page-title {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.page-error {
+  color: var(--bad);
+  font-size: 0.75rem;
+}
+
