@@ -12,6 +12,13 @@ Enter any URL and get an estimate of how much image bandwidth you could save on 
 ### Site spider & link checker
 Crawl internal pages (configurable depth and page limit), check every anchor link, and highlight dead links (HTTP 4xx/5xx). Links are tagged by zone — **content**, navigation, footer — so you can prioritise fixes in body copy. Download a **PDF report** summarising dead links.
 
+### UX, HTML & accessibility audit
+Single-page audit with three scored categories:
+
+- **HTML validation** — doctype, lang, duplicate IDs, deprecated tags, heading structure, table headers, landmark elements
+- **UX signals** — title/description length, viewport meta, favicon, Open Graph, generic link text, form labels, content depth
+- **Accessibility** — automated WCAG 2.1 scan via [axe-core](https://github.com/dequelabs/axe-core) with selector-level violations
+
 ## What the image scanner does
 
 1. Fetches the page HTML via a CORS proxy (`corsproxy.io`, with fallback)

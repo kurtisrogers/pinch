@@ -737,3 +737,129 @@ a:hover {
   font-size: 0.75rem;
 }
 
+/* Audit results */
+.audit-grid .viewport-card {
+  text-align: center;
+}
+
+.audit-score {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--accent);
+  margin: 0.5rem 0;
+}
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.audit-row {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.audit-row.severity-error {
+  border-color: rgba(240, 93, 94, 0.35);
+}
+
+.audit-row.severity-warning {
+  border-color: rgba(245, 166, 35, 0.35);
+}
+
+.audit-row summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.audit-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.severity-pill {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.severity-pill.error {
+  background: rgba(240, 93, 94, 0.15);
+  color: var(--bad);
+}
+
+.severity-pill.warning {
+  background: rgba(245, 166, 35, 0.15);
+  color: var(--warn);
+}
+
+.severity-pill.info {
+  background: rgba(61, 214, 140, 0.12);
+  color: var(--good);
+}
+
+.audit-title {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.wcag-tag {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.audit-detail {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.audit-detail p {
+  margin: 0.75rem 0 0;
+}
+
+.audit-selector code {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.audit-info-block {
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.audit-info-block summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .mode-tab {
+    font-size: 0.75rem;
+    padding: 0.55rem 0.5rem;
+  }
+}
+
+

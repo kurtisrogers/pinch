@@ -1,13 +1,38 @@
 import type { ScanProgress, ScanSummary } from "../scanner/types.js";
 import { formatBytes, formatPercent } from "../scanner/utils.js";
 import { VIEWPORTS } from "../scanner/viewports.js";
+import type { AuditProgress } from "../audit/types.js";
 import type { SpiderProgress, SpiderReport } from "../spider/types.js";
 import { isDeadLink } from "../spider/link-checker.js";
 import { escapeHtml, truncateUrl } from "./utils.js";
 
-export type AppMode = "images" | "spider";
+export type AppMode = "images" | "spider" | "audit";
 
-type Progress = ScanProgress | SpiderProgress;
+type Progress = ScanProgress | SpiderProgress | AuditProgress;
+
+const MODE_CONFIG: Record<
+  AppMode,
+  { button: string; loading: string; hint: string; showSpiderOptions: boolean }
+> = {
+  images: {
+    button: "Scan page",
+    loading: "Scanning…",
+    hint: "Analyzes <img> and <picture> elements. Estimates assume typical device pixel ratios (2× mobile/tablet, 1.5× desktop).",
+    showSpiderOptions: false,
+  },
+  spider: {
+    button: "Crawl & check links",
+    loading: "Crawling…",
+    hint: "Crawls internal pages, checks anchor links in content and navigation, and builds a PDF report of dead links.",
+    showSpiderOptions: true,
+  },
+  audit: {
+    button: "Run audit",
+    loading: "Auditing…",
+    hint: "Validates HTML markup, checks UX signals (meta tags, headings, forms), and runs an accessibility scan with axe-core (WCAG 2.1).",
+    showSpiderOptions: false,
+  },
+};
 
 export function renderApp(container: HTMLElement): void {
   container.innerHTML = `
@@ -16,17 +41,20 @@ export function renderApp(container: HTMLElement): void {
         <div class="hero-badge">Site audit toolkit</div>
         <h1>Pinch</h1>
         <p class="hero-sub">
-          Scan image efficiency across viewports, crawl your site, and find dead
-          content links — with a PDF report you can share.
+          Scan image efficiency, crawl for dead links, and audit UX, HTML validity,
+          and accessibility — all from your browser.
         </p>
       </header>
 
       <nav class="mode-tabs" role="tablist" aria-label="Scan mode">
         <button type="button" class="mode-tab active" data-mode="images" role="tab" aria-selected="true">
-          Image scanner
+          Images
         </button>
         <button type="button" class="mode-tab" data-mode="spider" role="tab" aria-selected="false">
-          Site spider &amp; links
+          Spider &amp; links
+        </button>
+        <button type="button" class="mode-tab" data-mode="audit" role="tab" aria-selected="false">
+          UX, HTML &amp; A11y
         </button>
       </nav>
 
@@ -62,10 +90,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
         </div>
 
-        <p class="form-hint" id="form-hint">
-          Analyzes &lt;img&gt; and &lt;picture&gt; elements. Estimates assume typical
-          device pixel ratios (2× mobile/tablet, 1.5× desktop).
-        </p>
+        <p class="form-hint" id="form-hint">${MODE_CONFIG.images.hint}</p>
       </form>
 
       <div id="status" class="status hidden" aria-live="polite"></div>
@@ -73,8 +98,8 @@ export function renderApp(container: HTMLElement): void {
 
       <footer class="footer">
         <p>
-          Built to highlight responsive image wins and content link health —
-          <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Responsive_images" target="_blank" rel="noopener">MDN responsive images</a>
+          Built to highlight responsive image wins, link health, and page quality —
+          <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility" target="_blank" rel="noopener">MDN accessibility</a>
         </p>
       </footer>
     </div>
@@ -90,6 +115,7 @@ export interface AppBindings {
 export function bindApp(handlers: {
   onImageScan: (url: string) => void;
   onSpiderScan: (url: string, options: { maxPages: number; maxDepth: number; sameOrigin: boolean }) => void;
+  onAuditScan: (url: string) => void;
   onDownloadPdf: () => void;
 }): AppBindings {
   let latestSpiderReport: SpiderReport | null = null;
@@ -101,34 +127,47 @@ export function bindApp(handlers: {
   const formHint = document.getElementById("form-hint")!;
   const scanButton = document.getElementById("scan-button") as HTMLButtonElement;
 
+  function applyMode(next: AppMode): void {
+    mode = next;
+    const config = MODE_CONFIG[mode];
+    spiderOptions.classList.toggle("hidden", !config.showSpiderOptions);
+    scanButton.textContent = config.button;
+    formHint.textContent = config.hint;
+  }
+
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      mode = tab.dataset.mode as AppMode;
+      const next = tab.dataset.mode as AppMode;
       tabs.forEach((t) => {
         const active = t === tab;
         t.classList.toggle("active", active);
         t.setAttribute("aria-selected", String(active));
       });
-      spiderOptions.classList.toggle("hidden", mode !== "spider");
-      scanButton.textContent = mode === "images" ? "Scan page" : "Crawl & check links";
-      formHint.textContent =
-        mode === "images"
-          ? "Analyzes <img> and <picture> elements. Estimates assume typical device pixel ratios (2× mobile/tablet, 1.5× desktop)."
-          : "Crawls internal pages, checks anchor links in content and navigation, and builds a PDF report of dead links.";
+      applyMode(next);
     });
   });
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const input = document.getElementById("url-input") as HTMLInputElement;
-    if (mode === "images") {
-      handlers.onImageScan(input.value);
-    } else {
-      handlers.onSpiderScan(input.value, {
-        maxPages: parseInt((document.getElementById("max-pages") as HTMLInputElement).value, 10) || 25,
-        maxDepth: parseInt((document.getElementById("max-depth") as HTMLInputElement).value, 10) || 2,
-        sameOrigin: (document.getElementById("same-origin") as HTMLInputElement).checked,
-      });
+    switch (mode) {
+      case "images":
+        handlers.onImageScan(input.value);
+        break;
+      case "spider":
+        handlers.onSpiderScan(input.value, {
+          maxPages: parseInt((document.getElementById("max-pages") as HTMLInputElement).value, 10) || 25,
+          maxDepth: parseInt((document.getElementById("max-depth") as HTMLInputElement).value, 10) || 2,
+          sameOrigin: (document.getElementById("same-origin") as HTMLInputElement).checked,
+        });
+        break;
+      case "audit":
+        handlers.onAuditScan(input.value);
+        break;
+      default: {
+        const _exhaustive: never = mode;
+        return _exhaustive;
+      }
     }
   });
 
@@ -151,13 +190,10 @@ export function bindApp(handlers: {
 export function setLoading(loading: boolean, mode: AppMode = "images"): void {
   const button = document.getElementById("scan-button") as HTMLButtonElement;
   const input = document.getElementById("url-input") as HTMLInputElement;
+  const config = MODE_CONFIG[mode];
   button.disabled = loading;
   input.disabled = loading;
-  if (!loading) {
-    button.textContent = mode === "images" ? "Scan page" : "Crawl & check links";
-  } else {
-    button.textContent = mode === "images" ? "Scanning…" : "Crawling…";
-  }
+  button.textContent = loading ? config.loading : config.button;
 }
 
 export function showProgress(progress: Progress): void {
@@ -171,7 +207,7 @@ export function showProgress(progress: Progress): void {
   }
 
   const bar =
-    progress.total && progress.current
+    "total" in progress && progress.total && progress.current
       ? `<div class="progress-bar"><div class="progress-fill" style="width:${(progress.current / progress.total) * 100}%"></div></div>`
       : `<div class="progress-bar indeterminate"><div class="progress-fill"></div></div>`;
 

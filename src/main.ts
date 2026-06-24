@@ -21,6 +21,7 @@ renderApp(app);
 const bindings = bindApp({
   onImageScan: handleImageScan,
   onSpiderScan: handleSpiderScan,
+  onAuditScan: handleAuditScan,
   onDownloadPdf: handleDownloadPdf,
 });
 
@@ -32,9 +33,7 @@ async function handleImageScan(url: string): Promise<void> {
     const summary = await scanPage(url, (progress) => showProgress(progress));
     renderImageResults(summary);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "An unexpected error occurred";
-    showError(message);
+    showError(err instanceof Error ? err.message : "An unexpected error occurred");
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -54,9 +53,23 @@ async function handleSpiderScan(
     bindings.setSpiderReport(report);
     renderSpiderResults(report);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "An unexpected error occurred";
-    showError(message);
+    showError(err instanceof Error ? err.message : "An unexpected error occurred");
+  } finally {
+    setLoading(false, bindings.getMode());
+  }
+}
+
+async function handleAuditScan(url: string): Promise<void> {
+  clearResults();
+  setLoading(true, "audit");
+
+  try {
+    const { runPageAudit } = await import("./audit/runner.js");
+    const { renderAuditResults } = await import("./ui/render-audit.js");
+    const report = await runPageAudit(url, (progress) => showProgress(progress));
+    renderAuditResults(report);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "An unexpected error occurred");
   } finally {
     setLoading(false, bindings.getMode());
   }
