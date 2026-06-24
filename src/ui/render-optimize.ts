@@ -48,7 +48,7 @@ export function renderOptimizeResults(result: OptimizeResult): void {
 
     <div class="report-actions">
       <button type="button" class="pdf-btn" id="download-all-btn">Download all (ZIP)</button>
-      <button type="button" class="pdf-btn secondary" id="copy-srcset-btn">Copy srcset HTML</button>
+      <button type="button" class="pdf-btn secondary" id="copy-srcset-btn">Copy picture HTML</button>
     </div>
 
     <section class="images-section">
@@ -61,6 +61,11 @@ export function renderOptimizeResults(result: OptimizeResult): void {
           <tbody>${variantRows}</tbody>
         </table>
       </div>
+    </section>
+
+    <section class="images-section">
+      <h3>Picture snippet</h3>
+      <pre class="srcset-snippet">${escapeHtml(result.pictureSnippet)}</pre>
     </section>
 
     <section class="images-section">

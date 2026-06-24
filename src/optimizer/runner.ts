@@ -31,6 +31,7 @@ export async function optimizeImageFile(
     img.naturalWidth,
     options.responsive,
     options.widths,
+    options.assetPack,
   );
 
   const variants: OptimizedVariant[] = [];
@@ -67,6 +68,9 @@ export async function optimizeImageFile(
   const savedBytes = Math.max(0, originalBytes - best.byteSize);
   const savedPercent = originalBytes > 0 ? (savedBytes / originalBytes) * 100 : 0;
 
+  const srcsetSnippet = buildSrcsetSnippet(stem, ext, variants);
+  const pictureSnippet = buildPictureSnippet(stem, ext, variants);
+
   onProgress({ phase: "complete", message: "Cheers — optimization complete!" });
 
   return {
@@ -75,7 +79,8 @@ export async function optimizeImageFile(
     originalWidth: img.naturalWidth,
     originalHeight: img.naturalHeight,
     variants,
-    srcsetSnippet: buildSrcsetSnippet(stem, ext, variants),
+    srcsetSnippet,
+    pictureSnippet,
     savedBytes,
     savedPercent,
   };
@@ -85,16 +90,31 @@ function buildWidthPlan(
   naturalWidth: number,
   responsive: boolean,
   widths: ResponsiveWidths,
+  assetPack: boolean,
 ): Array<{ label: string; width: number }> {
-  if (!responsive) {
-    return [{ label: "full", width: naturalWidth }];
+  const plan: Array<{ label: string; width: number }> = [];
+
+  if (assetPack) {
+    plan.push(
+      { label: "favicon-16", width: 16 },
+      { label: "favicon-32", width: 32 },
+      { label: "apple-180", width: 180 },
+      { label: "pwa-512", width: 512 },
+      { label: "og-1200", width: 1200 },
+    );
   }
 
-  const plan = [
-    { label: "mobile", width: widths.mobile },
-    { label: "tablet", width: widths.tablet },
-    { label: "desktop", width: widths.desktop },
-  ];
+  if (responsive) {
+    plan.push(
+      { label: "mobile", width: widths.mobile },
+      { label: "tablet", width: widths.tablet },
+      { label: "desktop", width: widths.desktop },
+    );
+  }
+
+  if (plan.length === 0) {
+    return [{ label: "full", width: naturalWidth }];
+  }
 
   const seen = new Set<number>();
   return plan
@@ -103,6 +123,7 @@ function buildWidthPlan(
       width: Math.min(entry.width, naturalWidth),
     }))
     .filter((entry) => {
+      if (entry.width < 1) return false;
       if (seen.has(entry.width)) return false;
       seen.add(entry.width);
       return true;
@@ -114,14 +135,37 @@ function buildSrcsetSnippet(
   ext: string,
   variants: OptimizedVariant[],
 ): string {
-  const srcset = variants.map((v) => `${stem}-${v.label}-${v.width}w.${ext} ${v.width}w`).join(",\n  ");
+  const responsive = variants.filter((v) => !v.label.startsWith("favicon") && !v.label.startsWith("apple") && !v.label.startsWith("pwa") && !v.label.startsWith("og"));
+  const use = responsive.length > 0 ? responsive : variants;
+  const srcset = use.map((v) => `${stem}-${v.label}-${v.width}w.${ext} ${v.width}w`).join(",\n  ");
+  const fallback = use[use.length - 1];
   return `<img
-  src="${stem}-desktop-${variants[variants.length - 1]?.width ?? ""}w.${ext}"
+  src="${stem}-${fallback?.label}-${fallback?.width ?? ""}w.${ext}"
   srcset="
   ${srcset}"
   sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
   alt=""
 />`;
+}
+
+function buildPictureSnippet(
+  stem: string,
+  ext: string,
+  variants: OptimizedVariant[],
+): string {
+  const responsive = variants.filter((v) => ["mobile", "tablet", "desktop"].includes(v.label));
+  if (responsive.length === 0) return buildSrcsetSnippet(stem, ext, variants);
+
+  const sources = responsive
+    .map(
+      (v) => `  <source media="(max-width: ${v.width}px)" srcset="${stem}-${v.label}-${v.width}w.${ext}" />`,
+    )
+    .join("\n");
+  const fallback = responsive[responsive.length - 1];
+  return `<picture>
+${sources}
+  <img src="${stem}-${fallback.label}-${fallback.width}w.${ext}" alt="" loading="lazy" />
+</picture>`;
 }
 
 export async function downloadVariant(variant: OptimizedVariant): Promise<void> {
@@ -137,9 +181,10 @@ export async function downloadAllAsZip(
     zip.file(variant.filename, variant.blob);
   }
   zip.file("srcset.html", result.srcsetSnippet);
+  zip.file("picture.html", result.pictureSnippet);
   zip.file(
     "README.txt",
-    `Pinch responsive image set\nOriginal: ${result.fileName}\nFormat: ${format}\n\nDrop these files in your project and use srcset.html as a starting point.`,
+    `Pinch responsive image set\nOriginal: ${result.fileName}\nFormat: ${format}\n\nDrop these files in your project and use srcset.html or picture.html as a starting point.`,
   );
 
   const blob = await zip.generateAsync({ type: "blob" });
