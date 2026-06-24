@@ -1,4 +1,5 @@
 import axe from "axe-core";
+import type { AxeResults, Result } from "axe-core";
 import type { AuditIssue } from "./types.js";
 import { prepareSrcdoc, waitForIframe } from "./document.js";
 
@@ -8,10 +9,6 @@ const IMPACT_TO_SEVERITY: Record<string, AuditIssue["severity"]> = {
   moderate: "warning",
   minor: "warning",
 };
-
-interface AxeWindow extends Window {
-  axe?: typeof axe;
-}
 
 export async function scanAccessibility(html: string, pageUrl: string): Promise<AuditIssue[]> {
   const iframe = document.createElement("iframe");
@@ -23,26 +20,23 @@ export async function scanAccessibility(html: string, pageUrl: string): Promise<
 
   try {
     await waitForIframe(iframe);
-    const doc = iframe.contentDocument;
-    const win = iframe.contentWindow as AxeWindow | null;
-    if (!doc || !win) {
-      throw new Error("Could not access scanned document");
-    }
 
-    const frameAxe = injectAxe(win, doc);
-    const results = await frameAxe.run(doc, {
-      runOnly: ["wcag2a", "wcag2aa", "best-practice"],
-    });
+    // Run axe from the parent window against the iframe via fromFrames.
+    // Injecting axe.source into srcdoc fails under CSP / inline-script restrictions.
+    const results = await axe.run<AxeResults>(
+      { fromFrames: [iframe] } as unknown as axe.ElementContext,
+      { runOnly: ["wcag2a", "wcag2aa", "best-practice"] },
+    );
 
-    const issues: AuditIssue[] = results.violations.flatMap((violation) =>
-      violation.nodes.map((node, index) => ({
+    const issues: AuditIssue[] = results.violations.flatMap((violation: Result) =>
+      violation.nodes.map((node, index: number) => ({
         id: `a11y-${violation.id}-${index}`,
         category: "accessibility" as const,
         severity: IMPACT_TO_SEVERITY[violation.impact ?? "moderate"] ?? "warning",
         title: violation.help,
         description: node.failureSummary ?? violation.description,
         selector: node.target.join(", "),
-        wcag: violation.tags.filter((t) => t.startsWith("wcag")).join(", ") || undefined,
+        wcag: violation.tags.filter((t: string) => t.startsWith("wcag")).join(", ") || undefined,
       })),
     );
 
@@ -60,20 +54,4 @@ export async function scanAccessibility(html: string, pageUrl: string): Promise<
   } finally {
     iframe.remove();
   }
-}
-
-function injectAxe(win: AxeWindow, doc: Document): typeof axe {
-  if (win.axe) {
-    return win.axe;
-  }
-
-  const script = doc.createElement("script");
-  script.textContent = axe.source;
-  doc.head.appendChild(script);
-
-  if (!win.axe) {
-    throw new Error("Failed to initialize axe in scan frame");
-  }
-
-  return win.axe;
 }
