@@ -1,13 +1,11 @@
 import { scanPage } from "./scanner/analyzer.js";
 import type { OptimizeOptions } from "./optimizer/types.js";
 import { downloadLinkReportPdf } from "./spider/pdf-report.js";
-import { runSpiderAndLinkCheck } from "./spider/runner.js";
 import {
   bindApp,
   clearResults,
   renderApp,
   renderImageResults,
-  renderSpiderResults,
   setLoading,
   showError,
   showProgress,
@@ -25,12 +23,18 @@ renderApp(app);
 const bindings = bindApp({
   onImageScan: handleImageScan,
   onOptimize: handleOptimize,
-  onSpiderScan: handleSpiderScan,
-  onAuditScan: handleAuditScan,
+  onCrawlScan: handleCrawlScan,
+  onDevAuditScan: handleDevAuditScan,
+  onHarAnalyze: handleHarAnalyze,
+  onBaselineDiff: handleBaselineDiff,
   onDownloadPdf: handleDownloadPdf,
   onDownloadOptimizeZip: handleDownloadOptimizeZip,
   onDownloadVariant: handleDownloadVariant,
   onCopySrcset: handleCopySrcset,
+  onSaveBaseline: handleSaveBaseline,
+  onExportJson: handleExportJson,
+  onExportMarkdown: handleExportMarkdown,
+  onClearBaseline: handleClearBaseline,
 });
 
 async function handleImageScan(url: string): Promise<void> {
@@ -63,19 +67,19 @@ async function handleOptimize(file: File, options: OptimizeOptions): Promise<voi
   }
 }
 
-async function handleSpiderScan(
+async function handleCrawlScan(
   url: string,
   options: { maxPages: number; maxDepth: number; sameOrigin: boolean },
 ): Promise<void> {
   clearResults();
-  setLoading(true, "spider");
+  setLoading(true, "crawl");
 
   try {
-    const report = await runSpiderAndLinkCheck(url, options, (progress) =>
-      showProgress(progress),
-    );
-    bindings.setSpiderReport(report);
-    renderSpiderResults(report);
+    const { runCrawlPlus } = await import("./devkit/runner-crawl-plus.js");
+    const { renderCrawlPlusResults } = await import("./ui/render-crawl-plus.js");
+    const report = await runCrawlPlus(url, options, (progress) => showProgress(progress));
+    bindings.setSpiderReport(report.spider);
+    renderCrawlPlusResults(report);
   } catch (err) {
     showError(err instanceof Error ? err.message : "An unexpected error occurred");
   } finally {
@@ -83,17 +87,55 @@ async function handleSpiderScan(
   }
 }
 
-async function handleAuditScan(url: string): Promise<void> {
+async function handleDevAuditScan(url: string): Promise<void> {
   clearResults();
-  setLoading(true, "audit");
+  setLoading(true, "devaudit");
 
   try {
-    const { runPageAudit } = await import("./audit/runner.js");
-    const { renderAuditResults } = await import("./ui/render-audit.js");
-    const report = await runPageAudit(url, (progress) => showProgress(progress));
-    renderAuditResults(report);
+    const { runDevAudit } = await import("./devkit/runner-dev-audit.js");
+    const { renderDevAuditResults } = await import("./ui/render-devkit.js");
+    const { devReport, auditReport } = await runDevAudit(url, (progress) => showProgress(progress));
+    renderDevAuditResults(devReport, auditReport);
   } catch (err) {
     showError(err instanceof Error ? err.message : "An unexpected error occurred");
+  } finally {
+    setLoading(false, bindings.getMode());
+  }
+}
+
+async function handleHarAnalyze(file: File): Promise<void> {
+  clearResults();
+  setLoading(true, "tools");
+
+  try {
+    const text = await file.text();
+    const { parseHarFile } = await import("./devkit/tools/har.js");
+    const { renderHarResults } = await import("./ui/render-devkit.js");
+    const summary = parseHarFile(file.name, text);
+    renderHarResults(summary);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "Could not parse HAR file");
+  } finally {
+    setLoading(false, bindings.getMode());
+  }
+}
+
+async function handleBaselineDiff(): Promise<void> {
+  clearResults();
+  setLoading(true, "tools");
+
+  try {
+    const { loadBaseline, diffAgainstBaseline } = await import("./devkit/tools/baseline.js");
+    const { renderBaselineDiff } = await import("./ui/render-devkit.js");
+    const baseline = loadBaseline();
+    if (!baseline) {
+      showError("No baseline saved yet. Run Dev Audit and click Save baseline.");
+      return;
+    }
+    const changes = diffAgainstBaseline(baseline.report);
+    renderBaselineDiff(changes);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "Baseline diff failed");
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -102,7 +144,7 @@ async function handleAuditScan(url: string): Promise<void> {
 function handleDownloadPdf(): void {
   const report = bindings.getSpiderReport();
   if (!report) {
-    showError("No spider report available. Run a crawl first.");
+    showError("No crawl report available. Run a crawl first.");
     return;
   }
   downloadLinkReportPdf(report);
@@ -130,8 +172,54 @@ async function handleCopySrcset(): Promise<void> {
   const result = getOptimizeResult();
   if (!result) return;
   try {
-    await navigator.clipboard.writeText(result.srcsetSnippet);
+    await navigator.clipboard.writeText(result.pictureSnippet || result.srcsetSnippet);
   } catch {
     showError("Could not copy to clipboard.");
   }
+}
+
+function handleSaveBaseline(): void {
+  import("./ui/render-devkit.js").then(({ getDevAuditReport }) => {
+    const report = getDevAuditReport();
+    if (!report) {
+      showError("Run a Dev Audit first.");
+      return;
+    }
+    import("./devkit/tools/baseline.js").then(({ saveBaseline }) => {
+      saveBaseline(report);
+      showProgress({ phase: "complete", message: "Baseline saved to browser storage." });
+    });
+  });
+}
+
+function handleExportJson(): void {
+  import("./ui/render-devkit.js").then(({ getDevAuditReport }) => {
+    const report = getDevAuditReport();
+    if (!report) {
+      showError("Run a Dev Audit first.");
+      return;
+    }
+    import("./devkit/tools/baseline.js").then(({ exportDevAuditJson }) => exportDevAuditJson(report));
+  });
+}
+
+function handleExportMarkdown(): void {
+  import("./ui/render-devkit.js").then(({ getDevAuditReport, getAuditReport }) => {
+    const report = getDevAuditReport();
+    if (!report) {
+      showError("Run a Dev Audit first.");
+      return;
+    }
+    const audit = getAuditReport() ?? undefined;
+    import("./devkit/tools/baseline.js").then(({ exportDevAuditMarkdown }) =>
+      exportDevAuditMarkdown(report, audit),
+    );
+  });
+}
+
+function handleClearBaseline(): void {
+  import("./devkit/tools/baseline.js").then(({ clearBaseline }) => {
+    clearBaseline();
+    showProgress({ phase: "complete", message: "Baseline cleared." });
+  });
 }

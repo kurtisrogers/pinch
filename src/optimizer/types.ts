@@ -10,6 +10,7 @@ export interface OptimizeOptions {
   format: ExportFormat;
   quality: number;
   responsive: boolean;
+  assetPack: boolean;
   widths: ResponsiveWidths;
 }
 
@@ -29,6 +30,7 @@ export interface OptimizeResult {
   originalHeight: number;
   variants: OptimizedVariant[];
   srcsetSnippet: string;
+  pictureSnippet: string;
   savedBytes: number;
   savedPercent: number;
 }

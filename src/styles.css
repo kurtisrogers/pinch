@@ -609,7 +609,8 @@ a:hover {
 }
 
 /* Spider options */
-.spider-options {
+.spider-options,
+.crawl-options {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
@@ -1085,5 +1086,116 @@ a:hover {
 
 .panel.hidden {
   display: none !important;
+}
+
+.tools-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.tool-block {
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 110, 199, 0.25);
+  border-radius: 12px;
+  background: rgba(20, 8, 32, 0.6);
+}
+
+.tool-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.tool-desc {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.secondary-btn {
+  background: rgba(0, 245, 255, 0.08) !important;
+  border-color: rgba(0, 245, 255, 0.35) !important;
+  color: var(--cyan) !important;
+}
+
+.og-preview-section {
+  margin-top: 1.5rem;
+}
+
+.og-preview-card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  border: 1px solid rgba(255, 110, 199, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(12, 6, 24, 0.8);
+  max-width: 560px;
+}
+
+.og-preview-img {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  background: #1a0a28;
+}
+
+.og-preview-placeholder {
+  width: 180px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 110, 199, 0.08);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.og-preview-body {
+  padding: 0.75rem 1rem 0.75rem 0;
+}
+
+.og-preview-site {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.og-preview-title {
+  margin: 0.25rem 0;
+  font-weight: 600;
+  color: var(--pink);
+}
+
+.og-preview-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.audit-detail-pre {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+@media (max-width: 520px) {
+  .og-preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .og-preview-img,
+  .og-preview-placeholder {
+    width: 100%;
+    height: 140px;
+  }
 }
 

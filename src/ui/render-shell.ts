@@ -6,9 +6,9 @@ import { cocktailLoaderHtml } from "./cocktail-loader.js";
 import { escapeHtml } from "./utils.js";
 import { formatBytes } from "../scanner/utils.js";
 
-export type AppMode = "images" | "optimize" | "spider" | "audit";
+export type AppMode = "optimize" | "images" | "devaudit" | "crawl" | "tools";
 
-type Progress = ScanProgress | SpiderProgress | AuditProgress | OptimizeProgress;
+type Progress = ScanProgress | SpiderProgress | AuditProgress | OptimizeProgress | import("../devkit/types.js").DevProgress;
 
 export interface ModeConfig {
   icon: string;
@@ -16,10 +16,10 @@ export interface ModeConfig {
   button: string;
   loading: string;
   hint: string;
-  panel: "url" | "optimize" | "spider";
+  panel: "url" | "optimize" | "crawl" | "tools";
 }
 
-export const MODES: AppMode[] = ["optimize", "images", "spider", "audit"];
+export const MODES: AppMode[] = ["optimize", "images", "devaudit", "crawl", "tools"];
 
 export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
   optimize: {
@@ -27,7 +27,7 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     label: "Crush",
     button: "Crush it",
     loading: "Shaking…",
-    hint: "Drop an image to compress like TinyPNG. Export PNG, JPEG, WebP, or GIF — or generate a responsive srcset for mobile, tablet & desktop.",
+    hint: "Drop an image to compress like TinyPNG. Export PNG, JPEG, WebP, or GIF — responsive sets, favicon/OG packs, and picture snippets.",
     panel: "optimize",
   },
   images: {
@@ -38,21 +38,29 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     hint: "See how much image bandwidth a page over-serves on mobile, tablet, and desktop.",
     panel: "url",
   },
-  spider: {
+  devaudit: {
+    icon: "🌅",
+    label: "Dev Audit",
+    button: "Run dev audit",
+    loading: "Auditing…",
+    hint: "Full developer audit: HTML/UX/a11y, Core Web Vitals hints, schema, security headers, fonts, scripts, OG preview — export JSON or save a baseline.",
+    panel: "url",
+  },
+  crawl: {
     icon: "🕷️",
-    label: "Spider",
+    label: "Crawl",
     button: "Crawl & check",
     loading: "Crawling…",
-    hint: "Crawl internal pages and find dead anchor links. Download a PDF report.",
-    panel: "spider",
+    hint: "Site spider with dead links, redirect chains, mixed content checks, and sitemap validation. Download a PDF report.",
+    panel: "crawl",
   },
-  audit: {
-    icon: "🌅",
-    label: "Audit",
-    button: "Run audit",
-    loading: "Auditing…",
-    hint: "UX signals, HTML validation, and WCAG accessibility — powered by axe-core.",
-    panel: "url",
+  tools: {
+    icon: "🛠️",
+    label: "Tools",
+    button: "Analyze HAR",
+    loading: "Analyzing…",
+    hint: "Import a Chrome HAR file, compare against a saved Dev Audit baseline, or run baseline diff after a dev audit.",
+    panel: "tools",
   },
 };
 
@@ -81,7 +89,7 @@ export function renderApp(container: HTMLElement): void {
         <div class="hero-badge">Miami, 1989 · browser edition</div>
         <h1>Pinch</h1>
         <p class="hero-sub">
-          Crush images, scan pages, crawl links, and audit quality —
+          Crush images, scan pages, crawl sites, run dev audits, and analyze HAR files —
           neon-soaked site tools that run in your browser.
         </p>
       </header>
@@ -125,6 +133,10 @@ export function renderApp(container: HTMLElement): void {
               <input type="checkbox" id="opt-responsive" checked />
               Export responsive set (mobile / tablet / desktop)
             </label>
+            <label class="checkbox-label span-2">
+              <input type="checkbox" id="opt-asset-pack" />
+              Generate favicon + OG asset pack (16–512px + 1200×630)
+            </label>
             <label>
               Mobile (px)
               <input type="number" id="width-mobile" min="100" max="4000" value="780" />
@@ -141,13 +153,30 @@ export function renderApp(container: HTMLElement): void {
           <button type="button" class="submit-full" id="optimize-button" disabled>Crush it</button>
         </div>
 
-        <div id="spider-options" class="spider-options hidden panel-inner">
+        <div id="crawl-options" class="crawl-options hidden panel-inner">
           <div class="options-grid">
             <label>Max pages <input type="number" id="max-pages" min="1" max="100" value="25" /></label>
             <label>Max depth <input type="number" id="max-depth" min="0" max="5" value="2" /></label>
             <label class="checkbox-label">
               <input type="checkbox" id="same-origin" checked /> Same domain only
             </label>
+          </div>
+        </div>
+
+        <div id="tools-panel" class="panel hidden">
+          <div class="tools-grid">
+            <div class="tool-block">
+              <h3>HAR analyzer</h3>
+              <p class="tool-desc">Export from Chrome DevTools → Network → Save all as HAR.</p>
+              <input type="file" id="har-input" accept=".har,application/json" hidden />
+              <button type="button" class="submit-full" id="har-browse-btn">Choose HAR file</button>
+              <p class="dropzone-meta" id="har-file-name">No file selected</p>
+            </div>
+            <div class="tool-block">
+              <h3>Baseline diff</h3>
+              <p class="tool-desc">Compare your last saved Dev Audit baseline to spot regressions.</p>
+              <button type="button" class="submit-full secondary-btn" id="baseline-diff-btn">Show baseline diff</button>
+            </div>
           </div>
         </div>
 
@@ -169,31 +198,42 @@ export interface AppBindings {
   setSpiderReport: (report: SpiderReport | null) => void;
   getMode: () => AppMode;
   getSelectedFile: () => File | null;
+  getSelectedHarFile: () => File | null;
 }
 
 export function bindApp(handlers: {
   onImageScan: (url: string) => void;
   onOptimize: (file: File, options: import("../optimizer/types.js").OptimizeOptions) => void;
-  onSpiderScan: (url: string, options: { maxPages: number; maxDepth: number; sameOrigin: boolean }) => void;
-  onAuditScan: (url: string) => void;
+  onCrawlScan: (url: string, options: { maxPages: number; maxDepth: number; sameOrigin: boolean }) => void;
+  onDevAuditScan: (url: string) => void;
+  onHarAnalyze: (file: File) => void;
+  onBaselineDiff: () => void;
   onDownloadPdf: () => void;
   onDownloadOptimizeZip: () => void;
   onDownloadVariant: (filename: string) => void;
   onCopySrcset: () => void;
+  onSaveBaseline: () => void;
+  onExportJson: () => void;
+  onExportMarkdown: () => void;
+  onClearBaseline: () => void;
 }): AppBindings {
   let latestSpiderReport: SpiderReport | null = null;
   let mode: AppMode = "optimize";
   let selectedFile: File | null = null;
+  let selectedHarFile: File | null = null;
 
   const form = document.getElementById("scan-form") as HTMLFormElement;
   const tabs = document.querySelectorAll<HTMLButtonElement>(".nav-chip");
   const urlPanel = document.getElementById("url-panel")!;
   const optimizePanel = document.getElementById("optimize-panel")!;
-  const spiderOptions = document.getElementById("spider-options")!;
+  const crawlOptions = document.getElementById("crawl-options")!;
+  const toolsPanel = document.getElementById("tools-panel")!;
   const formHint = document.getElementById("form-hint")!;
   const scanButton = document.getElementById("scan-button") as HTMLButtonElement;
   const optimizeButton = document.getElementById("optimize-button") as HTMLButtonElement;
   const fileInput = document.getElementById("file-input") as HTMLInputElement;
+  const harInput = document.getElementById("har-input") as HTMLInputElement;
+  const harFileNameEl = document.getElementById("har-file-name")!;
   const dropzone = document.getElementById("dropzone")!;
   const fileNameEl = document.getElementById("file-name")!;
   const qualitySlider = document.getElementById("opt-quality") as HTMLInputElement;
@@ -202,12 +242,14 @@ export function bindApp(handlers: {
   function applyMode(next: AppMode): void {
     mode = next;
     const config = MODE_CONFIG[mode];
-    urlPanel.classList.toggle("hidden", config.panel === "optimize");
+    urlPanel.classList.toggle("hidden", config.panel !== "url" && config.panel !== "crawl");
     optimizePanel.classList.toggle("hidden", config.panel !== "optimize");
-    spiderOptions.classList.toggle("hidden", config.panel !== "spider");
+    crawlOptions.classList.toggle("hidden", config.panel !== "crawl");
+    toolsPanel.classList.toggle("hidden", config.panel !== "tools");
+    scanButton.classList.toggle("hidden", config.panel === "optimize" || config.panel === "tools");
     scanButton.textContent = config.button;
     formHint.textContent = config.hint;
-    urlPanel.querySelector("#url-input")?.toggleAttribute("required", config.panel !== "optimize");
+    urlPanel.querySelector("#url-input")?.toggleAttribute("required", config.panel === "url" || config.panel === "crawl");
   }
 
   tabs.forEach((tab) => {
@@ -259,23 +301,41 @@ export function bindApp(handlers: {
     handlers.onOptimize(selectedFile, readOptimizeOptions());
   });
 
+  document.getElementById("har-browse-btn")!.addEventListener("click", () => harInput.click());
+
+  harInput.addEventListener("change", () => {
+    const file = harInput.files?.[0];
+    if (file) {
+      selectedHarFile = file;
+      harFileNameEl.textContent = file.name;
+      handlers.onHarAnalyze(file);
+    }
+  });
+
+  document.getElementById("baseline-diff-btn")!.addEventListener("click", () => {
+    handlers.onBaselineDiff();
+  });
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (mode === "optimize") return;
+
+    if (mode === "tools") return;
+
     const input = document.getElementById("url-input") as HTMLInputElement;
     switch (mode) {
       case "images":
         handlers.onImageScan(input.value);
         break;
-      case "spider":
-        handlers.onSpiderScan(input.value, {
+      case "crawl":
+        handlers.onCrawlScan(input.value, {
           maxPages: parseInt((document.getElementById("max-pages") as HTMLInputElement).value, 10) || 25,
           maxDepth: parseInt((document.getElementById("max-depth") as HTMLInputElement).value, 10) || 2,
           sameOrigin: (document.getElementById("same-origin") as HTMLInputElement).checked,
         });
         break;
-      case "audit":
-        handlers.onAuditScan(input.value);
+      case "devaudit":
+        handlers.onDevAuditScan(input.value);
         break;
       default: {
         const _exhaustive: never = mode;
@@ -289,6 +349,10 @@ export function bindApp(handlers: {
     if (target.id === "download-pdf-btn") handlers.onDownloadPdf();
     if (target.id === "download-all-btn") handlers.onDownloadOptimizeZip();
     if (target.id === "copy-srcset-btn") handlers.onCopySrcset();
+    if (target.id === "save-baseline-btn") handlers.onSaveBaseline();
+    if (target.id === "export-json-btn") handlers.onExportJson();
+    if (target.id === "export-md-btn") handlers.onExportMarkdown();
+    if (target.id === "clear-baseline-btn") handlers.onClearBaseline();
     const variant = target.getAttribute("data-download-variant");
     if (variant) handlers.onDownloadVariant(variant);
   });
@@ -300,6 +364,7 @@ export function bindApp(handlers: {
     },
     getMode: () => mode,
     getSelectedFile: () => selectedFile,
+    getSelectedHarFile: () => selectedHarFile,
   };
 }
 
@@ -308,6 +373,7 @@ function readOptimizeOptions(): import("../optimizer/types.js").OptimizeOptions 
     format: (document.getElementById("opt-format") as HTMLSelectElement).value as import("../optimizer/types.js").ExportFormat,
     quality: parseInt((document.getElementById("opt-quality") as HTMLInputElement).value, 10),
     responsive: (document.getElementById("opt-responsive") as HTMLInputElement).checked,
+    assetPack: (document.getElementById("opt-asset-pack") as HTMLInputElement).checked,
     widths: {
       mobile: parseInt((document.getElementById("width-mobile") as HTMLInputElement).value, 10) || 780,
       tablet: parseInt((document.getElementById("width-tablet") as HTMLInputElement).value, 10) || 1536,
