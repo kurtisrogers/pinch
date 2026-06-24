@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { currentUserEmail, onAuthStateChange, signInWithEmail, signOut } from "../billing/auth.js";
 import { isBillingEnabled, stripeProCheckoutUrl } from "../billing/config.js";
+import { clearCheckoutReturnParam, readCheckoutReturn, startCheckout } from "../billing/checkout.js";
 import { formatPeriodEnd, toolCostLabel } from "../billing/credits.js";
 import { refreshCredits } from "../billing/gate.js";
 import type { BillableTool, CreditStatus } from "../billing/types.js";
@@ -70,7 +71,10 @@ export function initBillingBar(): void {
     void syncBillingUi();
   });
 
-  void getInitialSession().then(() => syncBillingUi());
+  void getInitialSession().then(() => {
+    void syncBillingUi();
+    handleCheckoutReturn();
+  });
 
   if (unsubscribe) {
     window.addEventListener("beforeunload", unsubscribe, { once: true });
@@ -97,9 +101,59 @@ function bindBillingEvents(): void {
   });
 
   document.getElementById("upgrade-btn")?.addEventListener("click", () => {
-    const url = stripeProCheckoutUrl();
-    if (url) window.open(url, "_blank", "noopener");
+    void handleUpgrade();
   });
+}
+
+async function handleUpgrade(): Promise<void> {
+  if (!latestSession) {
+    openSignInDialog();
+    return;
+  }
+
+  const btn = document.getElementById("upgrade-btn") as HTMLButtonElement | null;
+  const originalLabel = btn?.textContent ?? "Upgrade to Pro";
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Opening checkout…";
+  }
+
+  try {
+    await startCheckout("pro");
+  } catch (err) {
+    const fallback = stripeProCheckoutUrl();
+    if (fallback) {
+      window.open(fallback, "_blank", "noopener");
+      return;
+    }
+    renderBillingError(err instanceof Error ? err.message : "Could not start checkout");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+}
+
+function handleCheckoutReturn(): void {
+  if (!isBillingEnabled()) return;
+
+  const result = readCheckoutReturn();
+  if (!result) return;
+
+  clearCheckoutReturnParam();
+
+  const status = document.getElementById("status");
+  if (!status) return;
+
+  status.classList.remove("hidden", "error");
+  if (result === "success") {
+    status.innerHTML = "<p>Payment received — your plan and credits will update in a moment.</p>";
+    void syncBillingUi();
+  } else {
+    status.innerHTML = "<p>Checkout cancelled. You are still on the free plan.</p>";
+  }
 }
 
 function wireAuthDialogClose(): void {

@@ -69,6 +69,7 @@ Deploy:
 ```bash
 supabase functions deploy consume-credits --no-verify-jwt
 supabase functions deploy get-credits --no-verify-jwt
+supabase functions deploy create-checkout-session --no-verify-jwt
 supabase functions deploy stripe-webhook --no-verify-jwt
 ```
 
@@ -80,6 +81,7 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 |----------|--------|------|------|
 | `/functions/v1/get-credits` | GET | Bearer JWT | — |
 | `/functions/v1/consume-credits` | POST | Bearer JWT | `{ "tool": "scan" \| "devaudit" \| "crawl" }` |
+| `/functions/v1/create-checkout-session` | POST | Bearer JWT | `{ "plan": "pro" \| "team", "success_url": "...", "cancel_url": "..." }` |
 | `/functions/v1/stripe-webhook` | POST | Stripe signature | Stripe event payload |
 
 `consume-credits` returns **402** when insufficient credits:
@@ -104,24 +106,32 @@ Enable Email provider (magic link). Disable password if you only want OTP.
 
 ## 5. Stripe setup
 
-1. Create **Pro** product + recurring price in Stripe
-2. Create a [Payment Link](https://dashboard.stripe.com/payment-links) or Checkout session
-3. When creating Checkout via API, pass metadata:
-
-   ```json
-   {
-     "client_reference_id": "<supabase_user_uuid>",
-     "metadata": {
-       "supabase_user_id": "<supabase_user_uuid>",
-       "plan": "pro"
-     }
-   }
-   ```
-
-4. Add webhook endpoint: `https://YOUR_PROJECT.supabase.co/functions/v1/stripe-webhook`
+1. Create **Pro** (and optional **Team**) product + recurring prices in Stripe
+2. Note the **Price IDs** (`price_...`) for `STRIPE_PRO_PRICE_ID` and `STRIPE_TEAM_PRICE_ID` secrets
+3. Add webhook endpoint: `https://YOUR_PROJECT.supabase.co/functions/v1/stripe-webhook`
    - Events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
 
-5. Put the Payment Link URL in `VITE_STRIPE_PRO_CHECKOUT_URL` for the Upgrade button
+### Automatic checkout (recommended)
+
+The **Upgrade to Pro** button calls `create-checkout-session`, which:
+
+- Requires the user to be signed in (JWT)
+- Creates a Stripe Checkout session with `client_reference_id` = Supabase user UUID
+- Sets `metadata.supabase_user_id` and `metadata.plan` on the session and subscription
+- Reuses an existing `stripe_customer_id` from `profiles` when present
+- Redirects back to Pinch with `?checkout=success` or `?checkout=cancel`
+
+No manual user linking is needed — the webhook reads the UUID from the session.
+
+Example response from `create-checkout-session`:
+
+```json
+{ "url": "https://checkout.stripe.com/c/pay/cs_test_...", "session_id": "cs_test_..." }
+```
+
+### Payment Link fallback (optional)
+
+If the Edge Function is unavailable, set `VITE_STRIPE_PRO_CHECKOUT_URL` to a static Stripe Payment Link. This path cannot attach the Supabase user UUID automatically, so prefer the API flow above.
 
 ## 6. GitHub Pages build secrets
 
@@ -131,7 +141,7 @@ Repo → Settings → Secrets → Actions:
 |--------|---------|
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Public anon key (safe in client) |
-| `VITE_STRIPE_PRO_CHECKOUT_URL` | Stripe Payment Link for upgrades |
+| `VITE_STRIPE_PRO_CHECKOUT_URL` | Optional Payment Link fallback if checkout API fails |
 
 The deploy workflow passes these into `npm run build`. **Never** commit service role or Stripe secret keys to the repo.
 
@@ -156,10 +166,12 @@ GitHub Pages (Vite UI)
 Supabase Auth
     │ JWT
     ▼
-Edge Functions (consume-credits, get-credits)
+Edge Functions (consume-credits, get-credits, create-checkout-session)
     │ service role
     ▼
 Postgres (profiles, usage_logs, RPC ledger)
+    ▲
+Stripe Checkout ← create-checkout-session (embeds user UUID)
     ▲
 Stripe webhook → set_plan_from_stripe
 ```

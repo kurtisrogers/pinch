@@ -1,23 +1,7 @@
-import { accessToken } from "./auth.js";
-import { functionsBaseUrl, isBillingEnabled } from "./config.js";
+import { authFetch } from "./api.js";
+import { isBillingEnabled } from "./config.js";
 import type { BillableTool, ConsumeResult, CreditStatus } from "./types.js";
 import { TOOL_COSTS } from "./types.js";
-
-async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const token = await accessToken();
-  if (!token) {
-    throw new Error("Not signed in");
-  }
-
-  return fetch(`${functionsBaseUrl()}/${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
-}
 
 export async function fetchCreditStatus(): Promise<CreditStatus | null> {
   if (!isBillingEnabled()) return null;

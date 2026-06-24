@@ -74,12 +74,22 @@ Deno.serve(async (req) => {
         const priceId = sub.items.data[0]?.price.id;
         const plan = planFromPriceId(priceId);
         const active = sub.status === "active" || sub.status === "trialing";
+        const userId = sub.metadata?.supabase_user_id;
 
-        await admin.rpc("set_plan_by_stripe_customer", {
-          p_stripe_customer_id: customerId,
-          p_plan: active ? plan : "free",
-          p_stripe_subscription_id: sub.id,
-        });
+        if (userId) {
+          await admin.rpc("set_plan_from_stripe", {
+            p_user_id: userId,
+            p_plan: active ? plan : "free",
+            p_stripe_customer_id: customerId,
+            p_stripe_subscription_id: sub.id,
+          });
+        } else {
+          await admin.rpc("set_plan_by_stripe_customer", {
+            p_stripe_customer_id: customerId,
+            p_plan: active ? plan : "free",
+            p_stripe_subscription_id: sub.id,
+          });
+        }
         break;
       }
 
