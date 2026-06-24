@@ -11,7 +11,7 @@ export async function requireCredits(tool: BillableTool): Promise<CreditStatus |
   const session = await getSession();
   if (!session) {
     throw new BillingError(
-      "Sign in to run URL-based scans. Crush and local Tools stay free.",
+      "Sign in or create an account to run URL-based scans. Crush and local Tools stay free.",
       "sign_in_required",
     );
   }

@@ -25,11 +25,11 @@ export function billingBarHtml(): string {
     <aside class="billing-bar" id="billing-bar">
       <div class="billing-meta">
         <span class="billing-plan" id="billing-plan">Free tier</span>
-        <span class="billing-credits" id="billing-credits">Sign in for 10 free credits/month</span>
+        <span class="billing-credits" id="billing-credits">New here? Sign in or create an account for 10 free credits/month.</span>
         <span class="billing-email" id="billing-email"></span>
       </div>
       <div class="billing-actions">
-        <button type="button" class="billing-btn" id="billing-signin-btn">Sign in</button>
+        <button type="button" class="billing-btn" id="billing-signin-btn">Sign in or create account</button>
         <button type="button" class="billing-btn hidden" id="billing-signout-btn">Sign out</button>
         <button type="button" class="billing-btn upgrade" id="upgrade-btn">Upgrade to Pro</button>
       </div>
@@ -37,8 +37,8 @@ export function billingBarHtml(): string {
 
     <dialog class="auth-dialog" id="auth-dialog">
       <form method="dialog" id="auth-form" class="auth-form">
-        <h2>Sign in to Pinch</h2>
-        <p class="auth-sub">Magic link only — no password. Free tier includes 10 credits each month.</p>
+        <h2>Sign in or create account</h2>
+        <p class="auth-sub">Enter your email — we’ll send a magic link. No password. New accounts get 10 free credits each month automatically.</p>
         <label>
           Email
           <input type="email" id="auth-email" required autocomplete="email" placeholder="you@example.com" />
@@ -198,7 +198,7 @@ function renderBillingBar(): void {
   if (!creditsEl || !planEl) return;
 
   if (!latestSession) {
-    creditsEl.textContent = "Sign in for 10 free credits/month";
+    creditsEl.textContent = "New here? Sign in or create an account for 10 free credits/month.";
     planEl.textContent = "Free tier";
     if (emailEl) emailEl.textContent = "";
     signInBtn?.classList.remove("hidden");
