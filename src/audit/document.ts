@@ -40,12 +40,7 @@ export async function withLiveDocument<T>(
   iframe.style.cssText =
     "position:fixed;width:1280px;height:800px;left:-9999px;top:0;border:0;visibility:hidden";
 
-  const baseHref = new URL(pageUrl).href;
-  const srcdoc = html.includes("<head")
-    ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`)
-    : `<!doctype html><html><head><base href="${baseHref}"></head><body>${html}</body></html>`;
-
-  iframe.srcdoc = srcdoc;
+  iframe.srcdoc = prepareSrcdoc(html, pageUrl);
   document.body.appendChild(iframe);
 
   try {
@@ -58,7 +53,14 @@ export async function withLiveDocument<T>(
   }
 }
 
-function waitForIframe(iframe: HTMLIFrameElement): Promise<void> {
+export function prepareSrcdoc(html: string, pageUrl: string): string {
+  const baseHref = new URL(pageUrl).href;
+  return html.includes("<head")
+    ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`)
+    : `<!doctype html><html><head><base href="${baseHref}"></head><body>${html}</body></html>`;
+}
+
+export function waitForIframe(iframe: HTMLIFrameElement): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Document load timed out")), 12000);
     iframe.onload = () => {

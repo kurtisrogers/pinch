@@ -1,6 +1,6 @@
 import axe from "axe-core";
 import type { AuditIssue } from "./types.js";
-import { withLiveDocument } from "./document.js";
+import { prepareSrcdoc, waitForIframe } from "./document.js";
 
 const IMPACT_TO_SEVERITY: Record<string, AuditIssue["severity"]> = {
   critical: "error",
@@ -9,10 +9,29 @@ const IMPACT_TO_SEVERITY: Record<string, AuditIssue["severity"]> = {
   minor: "warning",
 };
 
+interface AxeWindow extends Window {
+  axe?: typeof axe;
+}
+
 export async function scanAccessibility(html: string, pageUrl: string): Promise<AuditIssue[]> {
-  return withLiveDocument(html, pageUrl, async (doc) => {
-    const results = await axe.run(doc, {
-      runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] },
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText =
+    "position:fixed;width:1280px;height:800px;left:-9999px;top:0;border:0;visibility:hidden";
+  iframe.srcdoc = prepareSrcdoc(html, pageUrl);
+  document.body.appendChild(iframe);
+
+  try {
+    await waitForIframe(iframe);
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow as AxeWindow | null;
+    if (!doc || !win) {
+      throw new Error("Could not access scanned document");
+    }
+
+    const frameAxe = injectAxe(win, doc);
+    const results = await frameAxe.run(doc, {
+      runOnly: ["wcag2a", "wcag2aa", "best-practice"],
     });
 
     const issues: AuditIssue[] = results.violations.flatMap((violation) =>
@@ -38,5 +57,23 @@ export async function scanAccessibility(html: string, pageUrl: string): Promise<
     }
 
     return issues;
-  });
+  } finally {
+    iframe.remove();
+  }
+}
+
+function injectAxe(win: AxeWindow, doc: Document): typeof axe {
+  if (win.axe) {
+    return win.axe;
+  }
+
+  const script = doc.createElement("script");
+  script.textContent = axe.source;
+  doc.head.appendChild(script);
+
+  if (!win.axe) {
+    throw new Error("Failed to initialize axe in scan frame");
+  }
+
+  return win.axe;
 }
