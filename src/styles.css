@@ -1199,3 +1199,129 @@ a:hover {
   }
 }
 
+.billing-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 0 auto 1.25rem;
+  max-width: 920px;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 110, 199, 0.25);
+  border-radius: 12px;
+  background: rgba(12, 6, 24, 0.75);
+}
+
+.billing-bar.hidden {
+  display: none !important;
+}
+
+.billing-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.billing-plan {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cyan);
+}
+
+.billing-credits {
+  font-size: 0.9375rem;
+}
+
+.billing-email {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.billing-btn {
+  font-family: var(--font);
+  font-size: 0.8125rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 110, 199, 0.35);
+  background: rgba(255, 110, 199, 0.08);
+  color: var(--pink);
+  cursor: pointer;
+}
+
+.billing-btn.upgrade {
+  border-color: rgba(0, 245, 255, 0.4);
+  background: rgba(0, 245, 255, 0.08);
+  color: var(--cyan);
+}
+
+.auth-dialog {
+  border: 1px solid rgba(255, 110, 199, 0.35);
+  border-radius: 16px;
+  padding: 0;
+  background: #12061f;
+  color: inherit;
+  max-width: 420px;
+  width: calc(100% - 2rem);
+}
+
+.auth-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.auth-form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-form h2 {
+  margin: 0;
+}
+
+.auth-sub {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.auth-form input[type="email"] {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 110, 199, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+}
+
+.auth-message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cyan);
+}
+
+.auth-message.error {
+  color: #ff6b9d;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+

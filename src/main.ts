@@ -1,5 +1,7 @@
 import { scanPage } from "./scanner/analyzer.js";
 import type { OptimizeOptions } from "./optimizer/types.js";
+import { billingErrorMessage, requireCredits } from "./billing/gate.js";
+import { BillingError } from "./billing/types.js";
 import { downloadLinkReportPdf } from "./spider/pdf-report.js";
 import {
   bindApp,
@@ -11,6 +13,11 @@ import {
   showProgress,
 } from "./ui/render.js";
 import {
+  applyCreditsAfterRun,
+  initBillingBar,
+  renderBillingError,
+} from "./ui/render-billing.js";
+import {
   getOptimizeResult,
 } from "./ui/render-optimize.js";
 import "./styles.css";
@@ -19,6 +26,7 @@ const app = document.getElementById("app");
 if (!app) throw new Error("Missing #app element");
 
 renderApp(app);
+initBillingBar();
 
 const bindings = bindApp({
   onImageScan: handleImageScan,
@@ -39,13 +47,15 @@ const bindings = bindApp({
 
 async function handleImageScan(url: string): Promise<void> {
   clearResults();
-  setLoading(true, "images");
 
   try {
+    const creditStatus = await requireCredits("scan");
+    setLoading(true, "images");
     const summary = await scanPage(url, (progress) => showProgress(progress));
     renderImageResults(summary);
+    applyCreditsAfterRun(creditStatus);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "An unexpected error occurred");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -61,7 +71,7 @@ async function handleOptimize(file: File, options: OptimizeOptions): Promise<voi
     const result = await optimizeImageFile(file, options, (progress) => showProgress(progress));
     renderOptimizeResults(result);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "An unexpected error occurred");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -72,16 +82,18 @@ async function handleCrawlScan(
   options: { maxPages: number; maxDepth: number; sameOrigin: boolean },
 ): Promise<void> {
   clearResults();
-  setLoading(true, "crawl");
 
   try {
+    const creditStatus = await requireCredits("crawl");
+    setLoading(true, "crawl");
     const { runCrawlPlus } = await import("./devkit/runner-crawl-plus.js");
     const { renderCrawlPlusResults } = await import("./ui/render-crawl-plus.js");
     const report = await runCrawlPlus(url, options, (progress) => showProgress(progress));
     bindings.setSpiderReport(report.spider);
     renderCrawlPlusResults(report);
+    applyCreditsAfterRun(creditStatus);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "An unexpected error occurred");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -89,15 +101,17 @@ async function handleCrawlScan(
 
 async function handleDevAuditScan(url: string): Promise<void> {
   clearResults();
-  setLoading(true, "devaudit");
 
   try {
+    const creditStatus = await requireCredits("devaudit");
+    setLoading(true, "devaudit");
     const { runDevAudit } = await import("./devkit/runner-dev-audit.js");
     const { renderDevAuditResults } = await import("./ui/render-devkit.js");
     const { devReport, auditReport } = await runDevAudit(url, (progress) => showProgress(progress));
     renderDevAuditResults(devReport, auditReport);
+    applyCreditsAfterRun(creditStatus);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "An unexpected error occurred");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -114,7 +128,7 @@ async function handleHarAnalyze(file: File): Promise<void> {
     const summary = parseHarFile(file.name, text);
     renderHarResults(summary);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Could not parse HAR file");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
@@ -135,10 +149,18 @@ async function handleBaselineDiff(): Promise<void> {
     const changes = diffAgainstBaseline(baseline.report);
     renderBaselineDiff(changes);
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Baseline diff failed");
+    handleRunError(err);
   } finally {
     setLoading(false, bindings.getMode());
   }
+}
+
+function handleRunError(err: unknown): void {
+  if (err instanceof BillingError) {
+    renderBillingError(billingErrorMessage(err), err.code);
+    return;
+  }
+  showError(err instanceof Error ? err.message : "An unexpected error occurred");
 }
 
 function handleDownloadPdf(): void {

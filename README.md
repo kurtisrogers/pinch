@@ -35,6 +35,21 @@ Links are tagged by zone (content, navigation, footer). Download a **PDF report*
 - **HAR analyzer** — import a Chrome DevTools HAR export for domain breakdown, slow requests, and failure summary
 - **Baseline diff** — compare against your last saved Dev Audit baseline (stored in browser localStorage)
 
+## Billing (optional)
+
+Pinch can enforce **monthly credits** via Supabase Auth + Edge Functions. Without env vars, everything stays free and open.
+
+| Tool | Credits |
+|------|---------|
+| Scan | 1 |
+| Dev Audit | 2 |
+| Crawl | 4 |
+| Crush / Tools | Free |
+
+Free tier: **10 credits/month**. Pro/Team tiers via Stripe.
+
+Setup guide: [docs/BILLING.md](docs/BILLING.md)
+
 ## Development
 
 ```bash
