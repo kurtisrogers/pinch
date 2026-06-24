@@ -3,6 +3,7 @@ import type { AuditProgress } from "../audit/types.js";
 import type { OptimizeProgress } from "../optimizer/types.js";
 import type { SpiderProgress, SpiderReport } from "../spider/types.js";
 import { cocktailLoaderHtml } from "./cocktail-loader.js";
+import { billingBarHtml, toolCostHintForMode } from "./render-billing.js";
 import { escapeHtml } from "./utils.js";
 import { formatBytes } from "../scanner/utils.js";
 
@@ -93,6 +94,8 @@ export function renderApp(container: HTMLElement): void {
           neon-soaked site tools that run in your browser.
         </p>
       </header>
+
+      ${billingBarHtml()}
 
       <nav class="nav-rail" role="tablist" aria-label="Tools">${navChips}</nav>
 
@@ -248,7 +251,7 @@ export function bindApp(handlers: {
     toolsPanel.classList.toggle("hidden", config.panel !== "tools");
     scanButton.classList.toggle("hidden", config.panel === "optimize" || config.panel === "tools");
     scanButton.textContent = config.button;
-    formHint.textContent = config.hint;
+    formHint.textContent = config.hint + toolCostHintForMode(mode);
     urlPanel.querySelector("#url-input")?.toggleAttribute("required", config.panel === "url" || config.panel === "crawl");
   }
 

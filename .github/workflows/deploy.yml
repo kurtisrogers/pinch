@@ -26,7 +26,13 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PRO_CHECKOUT_URL: ${{ secrets.VITE_STRIPE_PRO_CHECKOUT_URL }}
+        run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
         with:
