@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "axe-core": "^4.12.1",
+    "gifenc": "^1.0.3",
     "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8"
+    "jspdf-autotable": "^5.0.8",
+    "jszip": "^3.10.1"
   }
 }

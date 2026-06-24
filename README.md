@@ -6,7 +6,10 @@ Live demo: [https://kurtisrogers.github.io/pinch/](https://kurtisrogers.github.i
 
 ## Features
 
-### Image scanner
+### 🍹 Crush — image optimizer
+Drop an image to compress it TinyPNG-style. Export as **PNG, JPEG, WebP, or GIF**, or generate a **responsive image set** with custom mobile, tablet, and desktop widths. Download individual files or a ZIP with a ready-made `srcset` HTML snippet. Everything runs in your browser — files never leave your device.
+
+### 🌴 Image scanner
 Enter any URL and get an estimate of how much image bandwidth you could save on mobile, tablet, and desktop by serving properly sized images.
 
 ### Site spider & link checker
