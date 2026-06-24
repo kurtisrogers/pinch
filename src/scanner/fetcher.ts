@@ -1,50 +1,86 @@
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+/**
+ * CORS proxy helpers for GitHub Pages.
+ *
+ * allorigins /raw blocks browser requests from github.io origins.
+ * HTML is fetched via corsproxy.io; image bytes via images.weserv.nl;
+ * intrinsic dimensions are read from direct <img> loads (no CORS needed).
+ */
 
-export async function fetchViaProxy(url: string): Promise<Response> {
-  const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-  const response = await fetch(proxyUrl, {
-    headers: { Accept: "text/html,application/xhtml+xml,*/*" },
-  });
+const HTML_PROXIES: Array<(url: string) => string> = [
+  (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+];
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch page (${response.status})`);
-  }
-
-  return response;
-}
+const IMAGE_BYTE_PROXIES: Array<(url: string) => string> = [
+  (url) => `https://images.weserv.nl/?url=${encodeURIComponent(url)}`,
+  (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
 
 export async function fetchHtml(url: string): Promise<string> {
   const normalized = normalizeUrl(url);
-  const response = await fetchViaProxy(normalized);
-  const html = await response.text();
+  let lastError: Error | null = null;
 
-  if (!html || html.length < 50) {
-    throw new Error("Received empty or invalid page content");
+  for (const buildProxyUrl of HTML_PROXIES) {
+    try {
+      const proxyUrl = buildProxyUrl(normalized);
+      const response = await fetch(proxyUrl);
+
+      if (!response.ok) {
+        throw new Error(`Proxy returned ${response.status}`);
+      }
+
+      const html = await parseHtmlResponse(response, proxyUrl);
+      if (html.length >= 50) {
+        return html;
+      }
+      throw new Error("Received empty or invalid page content");
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
   }
 
-  return html;
+  throw lastError ?? new Error("Failed to fetch page — all proxies blocked or unavailable");
 }
 
-export async function fetchByteSize(url: string): Promise<number> {
-  try {
-    const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-    const head = await fetch(proxyUrl, { method: "HEAD" });
-    const contentLength = head.headers.get("content-length");
-    if (contentLength) {
-      return parseInt(contentLength, 10);
+async function parseHtmlResponse(
+  response: Response,
+  proxyUrl: string,
+): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("json") || proxyUrl.includes("allorigins.win/get")) {
+    const json = (await response.json()) as { contents?: string; status?: { http_code?: number } };
+    if (json.status?.http_code && json.status.http_code >= 400) {
+      throw new Error(`Target page returned ${json.status.http_code}`);
     }
-  } catch {
-    // fall through to GET estimate
+    return json.contents ?? "";
   }
 
-  try {
-    const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-    const response = await fetch(proxyUrl);
-    const buffer = await response.arrayBuffer();
-    return buffer.byteLength;
-  } catch {
-    return 0;
+  return response.text();
+}
+
+export async function fetchImageBytes(url: string): Promise<number> {
+  for (const buildProxyUrl of IMAGE_BYTE_PROXIES) {
+    try {
+      const proxyUrl = buildProxyUrl(url);
+      const response = await fetch(proxyUrl);
+      if (!response.ok) continue;
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("text/html") || contentType.includes("json")) {
+        continue;
+      }
+
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength > 0) {
+        return buffer.byteLength;
+      }
+    } catch {
+      // try next proxy
+    }
   }
+
+  return 0;
 }
 
 export function loadImageDimensions(
@@ -56,37 +92,23 @@ export function loadImageDimensions(
       resolve({ width: img.naturalWidth, height: img.naturalHeight });
     };
     img.onerror = () => reject(new Error(`Could not load image: ${url}`));
-    img.crossOrigin = "anonymous";
     img.src = url;
   });
 }
 
-export async function loadImageViaProxy(
+export async function loadImageMetadata(
   url: string,
 ): Promise<{ width: number; height: number; byteSize: number }> {
-  const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+  const [dimensions, byteSize] = await Promise.all([
+    loadImageDimensions(url),
+    fetchImageBytes(url),
+  ]);
 
-  try {
-    const response = await fetch(proxyUrl);
-    const buffer = await response.arrayBuffer();
-    const byteSize = buffer.byteLength;
-    const blob = new Blob([buffer]);
-    const objectUrl = URL.createObjectURL(blob);
-
-    try {
-      const dims = await loadImageDimensions(objectUrl);
-      return { ...dims, byteSize };
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  } catch {
-    const byteSize = await fetchByteSize(url);
-    const dims = await loadImageDimensions(proxyUrl).catch(() => ({
-      width: 0,
-      height: 0,
-    }));
-    return { width: dims.width, height: dims.height, byteSize };
-  }
+  return {
+    width: dimensions.width,
+    height: dimensions.height,
+    byteSize,
+  };
 }
 
 export function normalizeUrl(input: string): string {

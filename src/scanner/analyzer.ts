@@ -1,4 +1,4 @@
-import { loadImageViaProxy } from "./fetcher.js";
+import { fetchHtml, loadImageMetadata as fetchImageMetadata, normalizeUrl } from "./fetcher.js";
 import type {
   ImageAnalysis,
   ImageMetadata,
@@ -17,7 +17,6 @@ import {
 } from "./utils.js";
 import { estimateLoadDelayMs, getViewport, VIEWPORTS } from "./viewports.js";
 import { countInlineBackgroundImages, parseImagesFromHtml } from "./parser.js";
-import { fetchHtml, normalizeUrl } from "./fetcher.js";
 
 type ProgressCallback = (progress: ScanProgress) => void;
 
@@ -92,14 +91,28 @@ async function analyzeImage(
 }
 
 async function loadImageMetadata(url: string): Promise<ImageMetadata> {
-  const { width, height, byteSize } = await loadImageViaProxy(url);
+  const { width, height, byteSize } = await fetchImageMetadata(url);
   return {
     url,
     naturalWidth: width,
     naturalHeight: height,
-    byteSize,
+    byteSize: byteSize || estimateBytesFromDimensions(width, height, url),
     format: detectFormat(url),
   };
+}
+
+/** Fallback when proxies cannot return byte size (cross-origin restrictions). */
+function estimateBytesFromDimensions(
+  width: number,
+  height: number,
+  url: string,
+): number {
+  if (width <= 0 || height <= 0) return 0;
+  const pixels = width * height;
+  const format = detectFormat(url);
+  const bytesPerPixel =
+    format === "png" ? 0.35 : format === "webp" ? 0.12 : format === "avif" ? 0.08 : 0.18;
+  return Math.round(pixels * bytesPerPixel);
 }
 
 function analyzeForViewport(
