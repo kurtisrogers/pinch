@@ -19,6 +19,7 @@ export interface CrawledPage {
   depth: number;
   title: string;
   links: ParsedLink[];
+  html?: string;
   fetchError?: string;
 }
 

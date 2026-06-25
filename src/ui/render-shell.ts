@@ -52,7 +52,7 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     label: "Crawl",
     button: "Crawl & check",
     loading: "Crawling…",
-    hint: "Site spider with dead links, redirect chains, mixed content checks, and sitemap validation. Download a PDF report.",
+    hint: "Site spider with dead links, component/CSS drift across pages, redirect chains, mixed content, and sitemap validation. Download a PDF report.",
     panel: "crawl",
   },
   tools: {

@@ -57,6 +57,7 @@ export async function crawlSite(
       depth: item.depth,
       title,
       links,
+      html: html || undefined,
       fetchError,
     });
 
