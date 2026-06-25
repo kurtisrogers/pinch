@@ -43,6 +43,7 @@ export interface CrawlPlusReport {
   redirects: DevFinding[];
   mixedContent: DevFinding[];
   sitemap: DevFinding[];
+  componentDrift: DevFinding[];
 }
 
 export interface HarSummary {

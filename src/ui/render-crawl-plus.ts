@@ -19,6 +19,7 @@ export function renderCrawlPlusResults(report: CrawlPlusReport): void {
 
 function renderExtraSections(report: CrawlPlusReport): string {
   return `
+    ${renderFindingSection("🎨 Component drift", report.componentDrift)}
     ${renderFindingSection("🔗 Redirect chains", report.redirects)}
     ${renderFindingSection("🔐 Mixed content", report.mixedContent)}
     ${renderFindingSection("🗺️ Sitemap", report.sitemap)}

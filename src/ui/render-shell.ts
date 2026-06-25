@@ -44,7 +44,7 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     label: "Dev Audit",
     button: "Run dev audit",
     loading: "Auditing…",
-    hint: "Full developer audit: HTML/UX/a11y, Core Web Vitals hints, schema, security headers, fonts, scripts, OG preview — export JSON or save a baseline.",
+    hint: "Full developer audit: HTML/UX/a11y, CSS consistency, Core Web Vitals, schema, security headers, OG preview — export JSON or save a baseline.",
     panel: "url",
   },
   crawl: {
@@ -52,7 +52,7 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     label: "Crawl",
     button: "Crawl & check",
     loading: "Crawling…",
-    hint: "Site spider with dead links, redirect chains, mixed content checks, and sitemap validation. Download a PDF report.",
+    hint: "Site spider with dead links, component/CSS drift across pages, redirect chains, mixed content, and sitemap validation. Download a PDF report.",
     panel: "crawl",
   },
   tools: {

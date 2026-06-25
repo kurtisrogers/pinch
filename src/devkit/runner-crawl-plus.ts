@@ -1,5 +1,6 @@
 import { runSpiderAndLinkCheck } from "../spider/runner.js";
 import type { SpiderProgress, SpiderReport } from "../spider/types.js";
+import { analyzeComponentDrift } from "./quality/css-drift.js";
 import { analyzeMixedContent } from "./links/mixed-content.js";
 import { analyzeRedirectChains } from "./links/redirects.js";
 import { analyzeSitemap } from "./links/sitemap.js";
@@ -39,9 +40,19 @@ export async function runCrawlPlus(
   onProgress({ phase: "sitemap", message: "Validating sitemap…" });
   const sitemap = await analyzeSitemap(spider.startUrl);
 
+  onProgress({ phase: "css-drift", message: "Analyzing component drift across crawled pages…" });
+  const componentDrift = analyzeComponentDrift(spider.pages, (current, total) => {
+    onProgress({
+      phase: "css-drift",
+      message: `Component drift ${current}/${total}…`,
+      current,
+      total,
+    });
+  });
+
   onProgress({ phase: "complete", message: "Crawl complete" });
 
-  return { spider, redirects, mixedContent, sitemap };
+  return { spider, redirects, mixedContent, sitemap, componentDrift };
 }
 
 export type { SpiderReport };
