@@ -70,6 +70,7 @@ Deploy:
 supabase functions deploy consume-credits --no-verify-jwt
 supabase functions deploy get-credits --no-verify-jwt
 supabase functions deploy create-checkout-session --no-verify-jwt
+supabase functions deploy cookie-probe --no-verify-jwt
 supabase functions deploy stripe-webhook --no-verify-jwt
 ```
 
@@ -82,6 +83,7 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 | `/functions/v1/get-credits` | GET | Bearer JWT | — |
 | `/functions/v1/consume-credits` | POST | Bearer JWT | `{ "tool": "scan" \| "devaudit" \| "crawl" }` |
 | `/functions/v1/create-checkout-session` | POST | Bearer JWT | `{ "plan": "pro" \| "team", "success_url": "...", "cancel_url": "..." }` |
+| `/functions/v1/cookie-probe` | POST | Anon key | `{ "url": "https://..." }` — Set-Cookie check on first HTTP load |
 | `/functions/v1/stripe-webhook` | POST | Stripe signature | Stripe event payload |
 
 `consume-credits` returns **402** when insufficient credits:
