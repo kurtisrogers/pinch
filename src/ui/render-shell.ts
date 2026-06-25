@@ -44,7 +44,7 @@ export const MODE_CONFIG: Record<AppMode, ModeConfig> = {
     label: "Dev Audit",
     button: "Run dev audit",
     loading: "Auditing…",
-    hint: "Full developer audit: HTML/UX/a11y, CSS consistency, Core Web Vitals, schema, security headers, OG preview — export JSON or save a baseline.",
+    hint: "Full developer audit: HTML/UX/a11y, CSS consistency, cookie consent compliance, Core Web Vitals, schema, security headers, OG preview — export JSON or save a baseline.",
     panel: "url",
   },
   crawl: {

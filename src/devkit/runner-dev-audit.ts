@@ -4,7 +4,7 @@ import { analyzeCoreWebVitals } from "./performance/cwv.js";
 import { analyzeFonts } from "./performance/fonts.js";
 import { analyzeScripts } from "./performance/scripts.js";
 import { buildOgPreview, ogPreviewFindings } from "./preview/og-card.js";
-import { analyzeCookieConsent } from "./quality/cookie-consent.js";
+import { analyzeCookiePermissions } from "./quality/cookie-permissions.js";
 import { analyzeCssConsistency } from "./quality/css-consistency.js";
 import { analyzeCssHints } from "./quality/css-hints.js";
 import { analyzeCssImprovements } from "./quality/css-improvements.js";
@@ -47,11 +47,13 @@ export async function runDevAudit(
     ...(await analyzeCssImprovements(ctx)),
   ];
 
+  onProgress({ phase: "privacy", message: "Checking cookie consent compliance…" });
+  const privacyFindings = await analyzeCookiePermissions(ctx);
+
   onProgress({ phase: "quality", message: "Checking SEO, security & compliance…" });
   const qualityFindings = [
     ...analyzeSchema(ctx),
     ...analyzeSecurityHeaders(ctx),
-    ...analyzeCookieConsent(ctx),
     ...(await analyzeRobots(ctx.url, ctx.html)),
   ];
 
@@ -65,6 +67,7 @@ export async function runDevAudit(
     section("audit", "HTML, UX & A11y", "🌅", auditFindings),
     section("performance", "Performance", "⚡", performanceFindings),
     section("css", "CSS & components", "🎨", cssFindings),
+    section("privacy", "Privacy & cookies", "🍪", privacyFindings),
     section("quality", "SEO & Security", "🔒", qualityFindings),
     section("preview", "Social preview", "📱", previewFindings),
   ];
